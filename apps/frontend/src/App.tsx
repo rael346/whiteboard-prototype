@@ -1,16 +1,37 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Excalidraw } from "@excalidraw/excalidraw";
+import { socket } from "./lib/socket";
+import Room from "@/components/Room";
 
 function App() {
-  const [count, setCount] = useState(0);
+  useEffect(() => {
+    socket.emit("hello from client", "hello client here");
 
+    socket.on("hello from server", () => {
+      console.log("server said hello");
+    });
+
+    return () => {
+      socket.off("hello from server");
+    };
+  }, []);
   return (
     <>
-      <h1 className="text-3xl font-bold underline">Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount(count => count + 1)}>
-          count is {count}
-        </button>
-      </div>
+      {/* <div className="w-[100vw] h-[100vh]">
+        <Excalidraw
+          onChange={(element, appState, files) => {
+            // console.log(element);
+            // console.log(appState);
+            // console.log(files);
+          }}
+          isCollaborating={true}
+          // onPointerUpdate={(payload) => {
+          //   console.log(payload);
+          // }}
+          // viewModeEnabled={true}
+        />
+      </div> */}
+      <Room />
     </>
   );
 }

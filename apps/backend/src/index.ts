@@ -16,8 +16,8 @@ const io = new SocketServer(server);
 io.on("connection", socket => {
   console.log("Made socket connection");
 
-  socket.on("hello", data => {
+  socket.on("hello from client", data => {
     console.log(data);
-    io.emit("hello");
+    io.emit("hello from server");
   });
 });
