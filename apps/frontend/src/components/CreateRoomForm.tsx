@@ -12,11 +12,21 @@ import {
 import { Input } from "@/components/ui/input";
 import CopyButton from "@/components/CopyButton";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { socket } from "@/lib/socket";
+import { User, useUserStore } from "@/stores/userStore";
+import { useRoomStore } from "@/stores/roomStore";
+import { useNavigate } from "react-router-dom";
 
-export default function CreateRoomForm({ roomID }: { roomID: string }) {
+export default function CreateRoomForm({ roomId }: { roomId: string }) {
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const setUser = useUserStore(state => state.setUser);
+  const setMembers = useRoomStore(state => state.setMembers);
+  const setAdmin = useRoomStore(state => state.setAdmin);
+
   const createRoomSchema = z.object({
     username: z
       .string()
@@ -35,8 +45,35 @@ export default function CreateRoomForm({ roomID }: { roomID: string }) {
 
   const onSubmit = ({ username }: CreatRoomForm) => {
     setIsLoading(true);
-    console.log("Create Room:", username, roomID);
+    socket.emit("create-room", {
+      roomId,
+      name: username,
+    });
   };
+
+  type RoomJoinedData = {
+    roomId: string;
+    user: User;
+    admin: User | undefined;
+    members: User[];
+  };
+
+  useEffect(() => {
+    socket.on(
+      "room-joined",
+      ({ user, roomId, admin, members }: RoomJoinedData) => {
+        console.log("Room Joined", roomId, user, admin, members);
+        setUser(user);
+        setAdmin(admin);
+        setMembers(members);
+        navigate(`/${roomId}`);
+      },
+    );
+
+    return () => {
+      socket.off("room-joined");
+    };
+  }, [setUser, setAdmin, setMembers, navigate]);
 
   return (
     <Form {...form}>
@@ -62,8 +99,8 @@ export default function CreateRoomForm({ roomID }: { roomID: string }) {
           <p className="mb-2 text-sm font-medium">Room ID</p>
 
           <div className="flex h-10 w-full items-center justify-between rounded-md border bg-background px-3 py-2 text-sm text-gray-400">
-            <span>{roomID}</span>
-            <CopyButton value={roomID} />
+            <span>{roomId}</span>
+            <CopyButton value={roomId} />
           </div>
         </div>
 

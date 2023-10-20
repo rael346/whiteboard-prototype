@@ -14,20 +14,30 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { socket } from "@/lib/socket";
+import { useRoomStore } from "@/stores/roomStore";
+import { User, useUserStore } from "@/stores/userStore";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
 import * as z from "zod";
 
 export default function JoinRoomButton() {
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const setUser = useUserStore(state => state.setUser);
+  const setMembers = useRoomStore(state => state.setMembers);
+  const setAdmin = useRoomStore(state => state.setAdmin);
+
   const joinRoomSchema = z.object({
-    username: z
+    name: z
       .string()
       .min(2, "Username must contain at least 2 characters")
       .max(50, "Username must not contain more than 50 characters"),
-    roomID: z
+    roomId: z
       .string()
       .trim()
       .length(21, "Room ID must contain exactly 21 characters"),
@@ -37,15 +47,39 @@ export default function JoinRoomButton() {
   const form = useForm<JoinRoomForm>({
     resolver: zodResolver(joinRoomSchema),
     defaultValues: {
-      username: "",
-      roomID: "",
+      name: "",
+      roomId: "",
     },
   });
 
-  const onSubmit = ({ username, roomID }: JoinRoomForm) => {
+  const onSubmit = ({ name, roomId }: JoinRoomForm) => {
     setIsLoading(true);
-    console.log("Join Room:", username, roomID);
+    socket.emit("join-room", { roomId, name });
   };
+
+  type RoomJoinedData = {
+    roomId: string;
+    user: User;
+    admin: User | undefined;
+    members: User[];
+  };
+
+  useEffect(() => {
+    socket.on(
+      "room-joined",
+      ({ user, roomId, admin, members }: RoomJoinedData) => {
+        console.log("Room Joined", roomId, user, admin, members);
+        setUser(user);
+        setAdmin(admin);
+        setMembers(members);
+        navigate(`/${roomId}`);
+      },
+    );
+
+    return () => {
+      socket.off("room-joined");
+    };
+  }, [setUser, setAdmin, setMembers, navigate]);
 
   return (
     <Dialog>
@@ -67,7 +101,7 @@ export default function JoinRoomButton() {
           >
             <FormField
               control={form.control}
-              name="username"
+              name="name"
               render={({ field }) => (
                 <FormItem>
                   <FormControl>
@@ -80,7 +114,7 @@ export default function JoinRoomButton() {
 
             <FormField
               control={form.control}
-              name="roomID"
+              name="roomId"
               render={({ field }) => (
                 <FormItem>
                   <FormControl>
